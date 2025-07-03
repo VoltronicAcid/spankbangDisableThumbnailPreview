@@ -1,0 +1,2 @@
+# spankbangDisableThumbnailPreview
+Disable thumbnail previews
