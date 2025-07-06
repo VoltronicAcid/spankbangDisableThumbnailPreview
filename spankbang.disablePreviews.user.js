@@ -11,9 +11,7 @@
 // ==/UserScript==
 
 if (document.location.pathname === "/") {
-    console.log("Main Page");
-    const mainPageCallback = (mutations) => {
-        console.log("Main page mutations observed");
+    const mutationFn = (mutations) => {
         mutations
             .filter(({ target }) => target.tagName === "VIDEO" && target.src)
             .forEach(mutation => {
@@ -23,20 +21,19 @@ if (document.location.pathname === "/") {
                 if (!parent.matches(":hover")) target.style.display = "none";
             });
     };
-    const mainPageObserver = new MutationObserver(mainPageCallback);
+    const observer = new MutationObserver(mutationFn);
     document.querySelectorAll("a[x-data='videoItem']").forEach(div => {
-        mainPageObserver.observe(div, { attributes: true, attributeFilter: ['style'], childList: true, subtree: true, });
+        observer.observe(div, { attributes: true, attributeFilter: ['style'], childList: true, subtree: true, });
     });
 } else {
-    console.log("Other pages");
     const mutationFn = (mutations, observer) => {
         mutations
             .forEach(mutation => {
                 const { target } = mutation;
-                const [childDiv] = target.getElementsByClassName("video-js");
+                const [videoDiv] = target.getElementsByClassName("video-js");
 
-                if (childDiv && mutation.oldValue === "video-item" && !target.matches(":hover")) {
-                    childDiv.style.display = "none";
+                if (videoDiv && mutation.oldValue === "video-item" && !target.matches(":hover")) {
+                    videoDiv.style.display = "none";
                     target.classList.toggle("is_rotating", false);
 
                     observer.takeRecords();
@@ -45,7 +42,7 @@ if (document.location.pathname === "/") {
     };
     const observer = new MutationObserver(mutationFn);
     Array.from(document.querySelectorAll("div.video-item"))
-        .forEach((div, idx, arr) => {
+        .forEach((div) => {
             observer.observe(div, { attributes: true, attributeFilter: ['class'], attributeOldValue: true, });
         });
 }
