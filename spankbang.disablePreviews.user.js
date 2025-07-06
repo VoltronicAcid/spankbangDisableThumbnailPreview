@@ -7,53 +7,45 @@
 // @supportURL    https://github.com/VoltronicAcid/spankbangDisableThumbnailPreview/issues
 // @icon          https://www.google.com/s2/favicons?sz=64&domain=spankbang.com
 // @match         http*://*spankbang.com/*
-// @run-at        document-idle 
+// @run-at        document-end 
 // ==/UserScript==
 
-// Options for the observer (which mutations to observe)
-const config = { attributes: true, childList: true, subtree: true };
+if (document.location.pathname === "/") {
+    console.log("Main Page");
+    const mainPageCallback = (mutations) => {
+        console.log("Main page mutations observed");
+        mutations
+            .filter(({ target }) => target.tagName === "VIDEO" && target.src)
+            .forEach(mutation => {
+                const { target } = mutation;
+                const { parentElement: parent } = target;
 
-// Callback function to execute when mutations are observed
-const callback = (mutationList, observer) => {
-    for (const mutation of mutationList) {
-        if (mutation.type === "childList" && mutation.addedNodes.length > 0) {
-            // Search results page
-
-            if (mutation.target.tagName == 'DIV' && mutation.target.classList.contains('video-js') && !mutation.previousSibling) {
-                if (mutation.target.parentElement && mutation.target.parentElement.matches(':hover')) {
-                    // User hovered for a preview. Doing nothing.
-                } else {
-                    // Programmatically triggerered by the site. Disabling.
-
-                    try {
-                        mutation.target.setAttribute('style', 'display: none');
-                        jQuery(mutation.target).parents('.is_rotating').removeClass('is_rotating'); // blinking
-                    } catch { };
-                };
-            };
-        } else if (mutation.type === "attributes") {
-            // Main page & other areas
-
-            //if (mutation.target.tagName == 'VIDEO') try {jQuery('[id^=recommended_video],.js-video-item video').hide()} catch {};
-
-            if (mutation.target.tagName == 'VIDEO' && mutation.attributeName == 'style' && !mutation.target.getAttribute('style') && !mutation.previousSibling) {
-                if (mutation.target.parentElement && mutation.target.parentElement.matches(':hover')) {
-                    // User hovered for a preview. Doing nothing.
-                } else {
-                    // Programmatically triggerered by the site. Disabling.
-
-                    try { mutation.target.setAttribute('style', 'display: none') } catch { };
-                };
-            };
-        };
+                if (!parent.matches(":hover")) target.style.display = "none";
+            });
     };
-};
+    const mainPageObserver = new MutationObserver(mainPageCallback);
+    document.querySelectorAll("a[x-data='videoItem']").forEach(div => {
+        mainPageObserver.observe(div, { attributes: true, attributeFilter: ['style'], childList: true, subtree: true, });
+    });
+} else {
+    console.log("Other pages");
+    const mutationFn = (mutations, observer) => {
+        mutations
+            .forEach(mutation => {
+                const { target } = mutation;
+                const [childDiv] = target.getElementsByClassName("video-js");
 
-// Create an observer instance linked to the callback function
-const observer = new MutationObserver(callback);
+                if (childDiv && mutation.oldValue === "video-item" && !target.matches(":hover")) {
+                    childDiv.style.display = "none";
+                    target.classList.toggle("is_rotating", false);
 
-// Start observing the target node for configured mutations
-jQuery(".js-media-list,.video-list").each((_, grid) => {
-    //console.log('set observer on', x);
-    observer.observe(grid, config);
-});
+                    observer.takeRecords();
+                }
+            });
+    };
+    const observer = new MutationObserver(mutationFn);
+    Array.from(document.querySelectorAll("div.video-item"))
+        .forEach((div, idx, arr) => {
+            observer.observe(div, { attributes: true, attributeFilter: ['class'], attributeOldValue: true, });
+        });
+}
